@@ -1,0 +1,68 @@
+#include <ESP8266WiFi.h>
+#include <ThingSpeak.h>
+
+// Wi-Fi credentials
+const char* ssid = "SSID";
+const char* password = "password";
+
+// ThingSpeak credentials
+unsigned long channelID = 1097026; // Replace with your channel ID
+const char* writeAPIKey = "L9BFWUH56LS6TIMU"; // Replace with your write API key
+
+WiFiClient client;
+
+const int analogPin = A0; // Analog input pin
+const float R1 = 56.0; // Resistor value in kΩ
+const float R2 = 10.0; // Resistor value in kΩ
+const float analogMax = 1023.0; // Maximum ADC value
+const float vRef = 3.3; // NodeMCU reference voltage (3.3V)
+
+// Timing
+unsigned long lastTime = 0;
+unsigned long interval = 30000; // 30 seconds
+
+void setup() {
+  Serial.begin(115200);
+
+  // Connect to Wi-Fi
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("Connected to Wi-Fi!");
+
+  // Initialize ThingSpeak
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  if (millis() - lastTime >= interval) {
+    // Read the analog value
+    int analogValue = analogRead(analogPin);
+
+    // Convert analog reading to voltage
+    float voltage = (analogValue / analogMax) * vRef;
+
+    // Calculate the input voltage from the solar panel
+    float solarVoltage = voltage * ((R1 + R2) / R2);
+
+    Serial.print("Solar Panel Voltage: ");
+    Serial.print(solarVoltage);
+    Serial.println(" V");
+
+    // Push the value to ThingSpeak
+    ThingSpeak.setField(1, solarVoltage);
+    int statusCode = ThingSpeak.writeFields(channelID, writeAPIKey);
+
+    if (statusCode == 200) {
+      Serial.println("Data successfully sent to ThingSpeak!");
+    } else {
+      Serial.print("Error sending data to ThingSpeak. Status code: ");
+      Serial.println(statusCode);
+    }
+
+    lastTime = millis();
+  }
+}

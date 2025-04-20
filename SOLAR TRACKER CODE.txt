@@ -1,0 +1,195 @@
+const int button1Pin = 8;
+const int button2Pin = 9;
+
+// Define motor pins for Motor A
+const int motorPin1 = 2;
+const int motorPin2 = 3;
+
+// Define motor pins for Motor B
+const int motorBPin1 = 4;
+const int motorBPin2 = 5;
+
+// Define IR sensor pins
+const int irSensorPin1 = 6;  // For Motor B clockwise stop
+const int irSensorPin2 = 7;  // For Motor B anticlockwise stop
+
+//2nd LDR
+
+
+// Define LDR pins
+const int ldrPinA0 = A0;
+const int ldrPinA1 = A1;
+const int ldrPinA2 = A2;  // For Motor B clockwise stop..
+const int ldrPinA3 = A4;  // For Motor B anticlockwise stop..
+
+// Variables to store button states
+int lastButton1State = HIGH;
+int lastButton2State = HIGH;
+
+unsigned long lastDebounceTime1 = 0;
+unsigned long lastDebounceTime2 = 0;
+const unsigned long debounceDelay = 50;  // Debounce delay in milliseconds
+
+
+
+void setup() {
+  // Initialize button pins as input with pull-up resistors
+  pinMode(button1Pin, INPUT_PULLUP);
+  pinMode(button2Pin, INPUT_PULLUP);
+
+  // Initialize motor pins as output
+  pinMode(motorPin1, OUTPUT);
+  pinMode(motorPin2, OUTPUT);
+  pinMode(motorBPin1, OUTPUT);
+  pinMode(motorBPin2, OUTPUT);
+
+  // Initialize IR sensor pins as input
+  pinMode(irSensorPin1, INPUT);
+  pinMode(irSensorPin2, INPUT);
+
+  // Initialize Serial Monitor
+  Serial.begin(9600);
+  Serial.println("Setup complete. Waiting for inputs...");
+}
+
+void loop() {
+  // Handle Motor B
+  // if (!motorBInitialized) {
+  //   if (motorBRunningClockwise) {
+  //     // Run Motor B clockwise until IR sensor 1 is triggered
+  //     analogWrite(motorBPin1, 150);
+  //     analogWrite(motorBPin2, 0);
+  //     if (digitalRead(irSensorPin1) == LOW) {  // IR Sensor 1 triggered
+  //       analogWrite(motorBPin1, 0);
+  //       analogWrite(motorBPin2, 0);
+  //       motorBRunningClockwise = false;  // Switch to anticlockwise
+  //       Serial.println("Motor B stopped clockwise on IR Sensor 1.");
+  //       delay(3000);
+  //     }
+  //   } else {
+  //     // Run Motor B anticlockwise until IR sensor 2 is triggered
+  //     analogWrite(motorBPin1, 0);
+  //     analogWrite(motorBPin2, 150);
+  //     if (digitalRead(irSensorPin2) == LOW) {  // IR Sensor 2 triggered
+  //       analogWrite(motorBPin1, 0);
+  //       analogWrite(motorBPin2, 0);
+  //       motorBInitialized = true;  // Stop Motor B after one cycle
+  //       Serial.println("Motor B stopped anticlockwise on IR Sensor 2.");
+  //       delay(3000);
+  //     }
+  //   }
+  // }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////LDR 2 start, motor b
+ // Read LDR values
+  int ldrValueA2 = analogRead(ldrPinA2);
+  int ldrValueA3 = analogRead(ldrPinA3);
+
+  Serial.print("LDR A2 Value: ");
+  Serial.print(ldrValueA2);
+  Serial.print(" | LDR A3 Value: ");
+  Serial.println(ldrValueA3);
+
+  // Compare LDR values and ensure the difference is significant
+  int ldrDifference_b = abs(ldrValueA2 - ldrValueA3);
+  int dutyCycle_b = 255 * 0.8;  // 60% duty cycle
+
+  if (ldrDifference_b > 100) {  // Check if the difference is more than 100
+    if (ldrValueA2 > ldrValueA3) {
+      if (digitalRead(irSensorPin1) == HIGH) {
+        analogWrite(motorBPin1, dutyCycle_b);
+        analogWrite(motorBPin2, 0);
+        Serial.println("Motor b running in direction A (A2 > A3).");
+      } else {
+        analogWrite(motorBPin1, 0);
+        analogWrite(motorBPin2, 0);
+        Serial.println("Motor b stopped in direction A due to Button 1.");
+      }
+    } else if (ldrValueA3 > ldrValueA2) {
+      if (digitalRead(irSensorPin2) == HIGH) {
+        analogWrite(motorBPin1, 0);
+        analogWrite(motorBPin2, dutyCycle_b);
+        Serial.println("Motor b running in direction B (A3 > A2).");
+      } else {
+        analogWrite(motorBPin1, 0);
+        analogWrite(motorBPin2, 0);
+        Serial.println("Motor b stopped in direction B due to Button 2.");
+      }
+    }
+  } else {
+    analogWrite(motorBPin1, 0);
+    analogWrite(motorBPin2, 0);
+    Serial.println("Motor b stopped (Difference <= 100).");
+  }
+  ///////////////////////////////////////////////////////////////////////////////////////////////LDR 2 end ; mmotor b
+
+  // Other logic for Motor A and LDR remains unchanged
+
+  // Read the current states of the buttons
+  int currentButton1State = digitalRead(button1Pin);
+  int currentButton2State = digitalRead(button2Pin);
+
+  // Debounce button 1
+  if (currentButton1State != lastButton1State) {
+    lastDebounceTime1 = millis();
+  }
+  if ((millis() - lastDebounceTime1) > debounceDelay) {
+    if (currentButton1State == LOW && lastButton1State == HIGH) {
+      Serial.println("Button 1 pressed: Stopping Direction A.");
+    }
+  }
+  lastButton1State = currentButton1State;
+
+  // Debounce button 2
+  if (currentButton2State != lastButton2State) {
+    lastDebounceTime2 = millis();
+  }
+  if ((millis() - lastDebounceTime2) > debounceDelay) {
+    if (currentButton2State == LOW && lastButton2State == HIGH) {
+      Serial.println("Button 2 pressed: Stopping Direction B.");
+    }
+  }
+  lastButton2State = currentButton2State;
+
+  // Read LDR values
+  int ldrValueA0 = analogRead(ldrPinA0);
+  int ldrValueA1 = analogRead(ldrPinA1);
+
+  Serial.print("LDR A0 Value: ");
+  Serial.print(ldrValueA0);
+  Serial.print(" | LDR A1 Value: ");
+  Serial.println(ldrValueA1);
+
+  // Compare LDR values and ensure the difference is significant
+  int ldrDifference = abs(ldrValueA0 - ldrValueA1);
+  int dutyCycle = 255 * 0.6;  // 60% duty cycle
+
+  if (ldrDifference > 100) {  // Check if the difference is more than 100
+    if (ldrValueA0 > ldrValueA1) {
+      if (currentButton1State == HIGH) {
+        analogWrite(motorPin1, dutyCycle);
+        analogWrite(motorPin2, 0);
+        Serial.println("Motor running in direction A (A0 > A1).");
+      } else {
+        analogWrite(motorPin1, 0);
+        analogWrite(motorPin2, 0);
+        Serial.println("Motor stopped in direction A due to Button 1.");
+      }
+    } else if (ldrValueA1 > ldrValueA0) {
+      if (currentButton2State == HIGH) {
+        analogWrite(motorPin1, 0);
+        analogWrite(motorPin2, dutyCycle);
+        Serial.println("Motor running in direction B (A1 > A0).");
+      } else {
+        analogWrite(motorPin1, 0);
+        analogWrite(motorPin2, 0);
+        Serial.println("Motor stopped in direction B due to Button 2.");
+      }
+    }
+  } else {
+    analogWrite(motorPin1, 0);
+    analogWrite(motorPin2, 0);
+    Serial.println("Motor stopped (Difference <= 100).");
+  }
+
+  delay(10);  // Small delay for stability
+}
